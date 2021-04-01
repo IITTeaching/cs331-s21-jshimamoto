@@ -49,8 +49,32 @@ def check_delimiters(expr):
     """Returns True if and only if `expr` contains only correctly matched delimiters, else returns False."""
     delim_openers = '{([<'
     delim_closers = '})]>'
-
     ### BEGIN SOLUTION
+    s = Stack()
+    for char in expr:
+        if char in delim_openers:
+            s.push(char)
+        if char == '}':
+            if s.empty(): 
+                return False
+            if s.pop() != '{': 
+                return False
+        if char == ')':
+            if s.empty(): 
+                return False
+            if s.pop() != '(': 
+                return False
+        if char == ']':
+            if s.empty(): 
+                return False
+            if s.pop() != '[': 
+                return False
+        if char == '>':
+            if s.empty(): 
+                return False
+            if s.pop() != '<': 
+                return False
+    return s.empty()
     ### END SOLUTION
 
 ################################################################################
@@ -112,15 +136,49 @@ def test_check_delimiters_6():
 # INFIX -> POSTFIX CONVERSION
 ################################################################################
 
+def check_precedence(ops, tok):
+    prec = {
+        '*': 2, 
+        '/': 2,
+        '+': 1, 
+        '-': 1
+    }
+    try:
+        return prec[tok] <= prec[ops.peek()]
+    except KeyError: 
+        return False
+
 def infix_to_postfix(expr):
     """Returns the postfix form of the infix expression found in `expr`"""
     # you may find the following precedence dictionary useful
-    prec = {'*': 2, '/': 2,
-            '+': 1, '-': 1}
+    prec = {
+        '*': 2, 
+        '/': 2,
+        '+': 1, 
+        '-': 1
+    }
     ops = Stack()
     postfix = []
     toks = expr.split()
     ### BEGIN SOLUTION
+    for tok in toks:
+        if tok.isdigit():
+            postfix.append(tok)
+        elif tok == '(':
+            ops.push(tok)
+        elif tok == ')':
+            while((not ops.empty()) and ops.peek() != '('):
+                postfix.append(ops.pop())
+            if (not ops.empty() and ops.peek() != '('):
+                return -1
+            else:
+                ops.pop()
+        else:
+            while not ops.empty() and check_precedence(ops, tok):
+                postfix.append(ops.pop())
+            ops.push(tok)
+    while not ops.empty():
+        postfix.append(ops.pop())
     ### END SOLUTION
     return ' '.join(postfix)
 
@@ -161,24 +219,52 @@ class Queue:
         self.head = -1
         self.tail = -1
 
-    ### BEGIN SOLUTION
-    ### END SOLUTION
-
     def enqueue(self, val):
         ### BEGIN SOLUTION
+        if self.empty():
+            self.tail = 0
+        self.head += 1
+        if self.head >= len(self.data):
+            self.head = 0
+        if self.data[self.head] != None:
+            raise RuntimeError
+        self.data[self.head] = val
         ### END SOLUTION
 
     def dequeue(self):
         ### BEGIN SOLUTION
+        if self.empty():
+            raise RuntimeError
+        temp = self.data[self.tail]
+        self.data[self.tail] = None
+        self.tail += 1
+        if self.tail >= len(self.data):
+            self.tail = 0
+        return temp
         ### END SOLUTION
 
     def resize(self, newsize):
         assert(len(self.data) < newsize)
         ### BEGIN SOLUTION
+        j = 0
+        new_data = [None] * len(self.data)
+        for i in self:
+            if i != None:
+                new_data[j] = i
+                j += 1
+        new_data = [None] * (newsize - len(self.data)) + new_data
+        self.head = -1
+        self.tail = len(self.data)
+        self.data = new_data
         ### END SOLUTION
 
     def empty(self):
         ### BEGIN SOLUTION
+        for i in self.data:
+            if i != None:
+                return False
+        self.head = self.tail = -1
+        return True
         ### END SOLUTION
 
     def __bool__(self):
@@ -194,6 +280,12 @@ class Queue:
 
     def __iter__(self):
         ### BEGIN SOLUTION
+        for i in self.data[self.tail:]:
+            if i != None:
+                yield i
+        for i in self.data[0:self.tail]:
+            if i != None:
+                yield i
         ### END SOLUTION
 
 ################################################################################
