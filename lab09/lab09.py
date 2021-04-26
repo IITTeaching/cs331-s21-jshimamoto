@@ -1,9 +1,10 @@
+
 from unittest import TestCase
 import random
 
+
 class HBStree:
     """This is an immutable binary search tree with history.
-
     Each insert and delete operation creates a new version of the tree. The data
     structure allows past versions to be accessed.
     """
@@ -14,6 +15,7 @@ class HBStree:
         modify this code.
         """
         __slots__ = []
+
         def __new__(cls, val, left, right):
             return tuple.__new__(cls, (val, left, right))
 
@@ -51,6 +53,21 @@ class HBStree:
         KeyError, if key does not exist.
         """
         # BEGIN SOLUTION
+        node = self.get_current_root()
+        while True:
+            if node.val == key:
+                return True
+
+            if key < node.val:
+                if not node.left:
+                    raise KeyError
+                else:
+                    node = node.left
+            else:
+                if not node.right:
+                    raise KeyError
+                else:
+                    node = node.right
         # END SOLUTION
 
     def __contains__(self, el):
@@ -58,20 +75,92 @@ class HBStree:
         Return True if el exists in the current version of the tree.
         """
         # BEGIN SOLUTION
+        try:
+            self.__getitem__(el)
+            return True
+        except:
+            return False
         # END SOLUTION
 
-    def insert(self,key):
+    def insert(self, key):
         """
         Adds key to the tree, creating a new version of the
         tree. If key already exists, then do nothing and refrain
         from creating a new version.
         """
         # BEGIN SOLUTION
+        def sift_down(node):
+            if not node:
+                return HBStree.INode(key, None, None)
+            if key < node.val:
+                return HBStree.INode(node.val, sift_down(node.left), node.right)
+            else:
+                return HBStree.INode(node.val, node.left, sift_down(node.right))
+
+        if self.__contains__(key):
+            return
+
+        self.root_versions.append(sift_down(self.get_current_root()))
+
         # END SOLUTION
 
-    def delete(self,key):
-        """Delete key from the tree, creating a new version of the tree. If key does not exist in the current version of the tree, then do nothing and refrain from creating a new version."""
+    def delete(self, key):
+        """Delete key from the tree, creating a new version of the tree. If key does not exist in the current version
+        of the tree, then do nothing and refrain from creating a new version. """
         # BEGIN SOLUTION
+
+        # mutable root node
+        root = self.get_current_root()
+
+        def sift_up(old_node, new_node):
+            if old_node is root:
+                return new_node
+
+            parent, node = None, root
+            while old_node.val is not node.val:
+                if old_node.val < node.val:
+                    parent, node = node, node.left
+                else:
+                    parent, node = node, node.right
+
+            new_parent = HBStree.INode(parent.val, new_node, parent.right) if old_node.val < parent.val \
+                else HBStree.INode(parent.val, new_node, parent.right)
+            return sift_up(parent, new_parent)
+
+        if not self.__contains__(key):
+            return
+
+        # find node that is to be deleted
+        to_del = self.get_current_root()
+        while to_del.val != key:
+            if key < to_del.val:
+                to_del = to_del.left
+            else:
+                to_del = to_del.right
+
+        # node that will replace node that is to be deleted
+        new_node = None
+
+        # if node has neither children
+        if not to_del.left and not to_del.right:
+            new_node = None
+        # if node has left child but not right
+        elif to_del.left and not to_del.right:
+            new_node = to_del.left
+        # if node has right child but not left
+        elif to_del.right and not to_del.left:
+            new_node = to_del.right
+        # if node has both children
+        else:
+            parent, largest = to_del, to_del.left
+            while largest.right and largest.right.val > largest.val:
+                largest = largest.right
+
+            new_parent = HBStree.INode(parent.val, largest.left, parent.right) if largest.left.val < parent.val \
+                else HBStree.INode(parent.val, largest.left, parent.right)
+            root = sift_up(parent, new_parent)
+
+        self.root_versions.append(sift_up(to_del, new_node))
         # END SOLUTION
 
     @staticmethod
@@ -86,7 +175,7 @@ class HBStree:
 
     def __len__(self):
         """
-        Return the nuber of nodes in the current version of the tree.
+        Return the number of nodes in the current version of the tree.
         """
         return HBStree.subtree_size(self.get_current_root())
 
@@ -116,7 +205,7 @@ class HBStree:
         the data structure (recall that nodes can be shared across versions).
         """
         t = self.total_size()
-        sumsizes = sum([ HBStree.subtree_size(r) for r in self.root_versions ])
+        sumsizes = sum([HBStree.subtree_size(r) for r in self.root_versions])
         return sumsizes / t
 
     def get_current_root(self):
@@ -141,8 +230,20 @@ class HBStree:
         BS-tree.
         """
         if timetravel < 0 or timetravel >= len(self.root_versions):
-            raise IndexError(f"valid versions for time travel are 0 to {len(self.root_versions) -1}, but was {timetravel}")
+            raise IndexError(
+                f"valid versions for time travel are 0 to {len(self.root_versions) - 1}, but was {timetravel}")
         # BEGIN SOLUTION
+        root = self.root_versions[-(timetravel + 1)]
+
+        def traverse(node):
+            if not node:
+                return []
+            vals = traverse(node.left)
+            vals.append(node.val)
+            vals += traverse(node.right)
+            return vals
+
+        return traverse(root)
         # END SOLUTION
 
     @staticmethod
@@ -151,25 +252,25 @@ class HBStree:
         Creates a string representation of the tree rooted at root.
         """
         height = HBStree.height(root)
-        width=4 * pow(2,height)
+        width = 4 * pow(2, height)
         nodes = [(root, 0)]
         prev_level = 0
         repr_str = ''
         while nodes:
-            n,level = nodes.pop(0)
+            n, level = nodes.pop(0)
             if prev_level != level:
                 prev_level = level
                 repr_str += '\n'
             if not n:
-                if level < height-1:
-                    nodes.extend([(None, level+1), (None, level+1)])
-                repr_str += '{val:^{width}}'.format(val='-', width=width//2**level)
+                if level < height - 1:
+                    nodes.extend([(None, level + 1), (None, level + 1)])
+                repr_str += '{val:^{width}}'.format(val='-', width=width // 2 ** level)
             elif n:
-                if n.left or level < height-1:
-                    nodes.append((n.left, level+1))
-                if n.right or level < height-1:
-                    nodes.append((n.right, level+1))
-                repr_str += '{val:^{width}}'.format(val=n.val, width=width//2**level)
+                if n.left or level < height - 1:
+                    nodes.append((n.left, level + 1))
+                if n.right or level < height - 1:
+                    nodes.append((n.right, level + 1))
+                repr_str += '{val:^{width}}'.format(val=n.val, width=width // 2 ** level)
         return repr_str
 
     @staticmethod
@@ -177,11 +278,13 @@ class HBStree:
         """
         Returns the height of the longest branch of a tree rooted at root.
         """
+
         def height_rec(n):
             if not n:
                 return 0
             else:
-                return max(1+height_rec(n.left), 1+height_rec(n.right))
+                return max(1 + height_rec(n.left), 1 + height_rec(n.right))
+
         return height_rec(root)
 
     def __str__(self):
@@ -197,6 +300,7 @@ class HBStree:
             s += (80 * "=") + f"\nVersion: {t}\n" + (80 * "=") + f"\n{HBStree.stringify_subtree(r)}\n"
         return s
 
+
 ################################################################################
 # TEST CASES
 ################################################################################
@@ -209,40 +313,44 @@ def check_inserted(vals):
     for v in vals:
         t.insert(v)
 
-    for i in range(0,len(vals) + 1):
-        sortel = [ v for v in t.version_iter(len(vals) - i) ]
+    for i in range(0, len(vals) + 1):
+        sortel = [v for v in t.version_iter(len(vals) - i)]
         sortval = sorted(vals[0:i])
-        for j in range(0,i):
-            tc.assertEqual(sortval[j],sortel[j])
+        for j in range(0, i):
+            tc.assertEqual(sortval[j], sortel[j])
     return t
+
 
 # 20 points
 def test_insert_1():
-    check_inserted([3,1,5])
-    check_inserted([1,2,3,4,5,6])
-    check_inserted([6,5,4,3,2,1])
-    check_inserted([11,51,1,6,89,123,4,2,3,5,7])
+    check_inserted([3, 1, 5])
+    check_inserted([1, 2, 3, 4, 5, 6])
+    check_inserted([6, 5, 4, 3, 2, 1])
+    check_inserted([11, 51, 1, 6, 89, 123, 4, 2, 3, 5, 7])
+
 
 # 20 points
 def test_insert_2():
-    for i in range(0,10):
-        vals = [ random.randint(0,100) for i in range(0,100) ]
+    for i in range(0, 10):
+        vals = [random.randint(0, 100) for i in range(0, 100)]
         vals = list(set(vals))
         random.shuffle(vals)
         check_inserted(vals)
 
+
 # 10 points
 def test_lookup():
-    for i in range(0,10):
-        vals = [ random.randint(0,100) for i in range(0,100) ]
+    for i in range(0, 10):
+        vals = [random.randint(0, 100) for i in range(0, 100)]
         vals = list(set(vals))
         random.shuffle(vals)
         t = check_inserted(vals)
         tc = TestCase()
         for v in vals:
             tc.assertTrue(v in t)
-        for v in [ random.randint(101,1000) for i in range(0,100) ]:
+        for v in [random.randint(101, 1000) for i in range(0, 100)]:
             tc.assertFalse(v in t)
+
 
 def insert_check_delete(vals):
     tc = TestCase()
@@ -254,26 +362,29 @@ def insert_check_delete(vals):
         t.insert(v)
 
     todo = sorted(vals)
-    for i in range(0,len(vals)):
+    for i in range(0, len(vals)):
         t.delete(todo[0])
         del todo[0]
-        sortel = [ v for v in t.version_iter() ]
+        sortel = [v for v in t.version_iter()]
         sortval = sorted(todo)
-        for j in range(0,len(sortval)):
-            tc.assertEqual(sortval[j],sortel[j])
+        for j in range(0, len(sortval)):
+            tc.assertEqual(sortval[j], sortel[j])
+
 
 # 20 points
 def test_delete_1():
-    insert_check_delete([1,2,3,4,5])
-    insert_check_delete([2,5,1,7,6,4])
+    insert_check_delete([1, 2, 3, 4, 5])
+    insert_check_delete([2, 5, 1, 7, 6, 4])
+
 
 # 20 points
 def test_delete_2():
-    for i in range(0,10):
-        vals = [ random.randint(0,100) for i in range(0,100) ]
+    for i in range(0, 10):
+        vals = [random.randint(0, 100) for i in range(0, 100)]
         vals = list(set(vals))
         random.shuffle(vals)
         insert_check_delete(vals)
+
 
 # 10 points
 def test_corner_cases():
@@ -281,21 +392,21 @@ def test_corner_cases():
     t = HBStree()
 
     # insert multiple times
-    for i in range(0,10,2):
-        for j in range(0,3):
+    for i in range(0, 10, 2):
+        for j in range(0, 3):
             t.insert(i)
 
-    tc.assertEqual(t.num_versions(), len(range(0,10,2)) + 1)
+    tc.assertEqual(t.num_versions(), len(range(0, 10, 2)) + 1)
 
     t = HBStree()
 
-    for i in range(0,5):
+    for i in range(0, 5):
         t.insert(3 * i)
 
-    for i in range(0,5):
+    for i in range(0, 5):
         t.delete(0)
 
-    tc.assertEqual(t.num_versions(), len(range(0,5)) + 2)
+    tc.assertEqual(t.num_versions(), len(range(0, 5)) + 2)
 
     with tc.assertRaises(KeyError):
         t[0]
@@ -315,8 +426,10 @@ def test_corner_cases():
 def say_test(f):
     print(80 * "#" + "\n" + f.__name__ + "\n" + 80 * "#" + "\n")
 
+
 def say_success():
     print("----> SUCCESS")
+
 
 ################################################################################
 # MAIN
@@ -332,6 +445,7 @@ def main():
         t()
         say_success()
     print(80 * "#" + "\nALL TEST CASES FINISHED SUCCESSFULLY!\n" + 80 * "#")
+
 
 if __name__ == '__main__':
     main()
