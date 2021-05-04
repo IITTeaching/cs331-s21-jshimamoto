@@ -15,6 +15,9 @@ class AVLTree:
 
         def rotate_left(self):
             ### BEGIN SOLUTION
+            n = self.right
+            self.val, n.val = n.val, self.val
+            self.right, n.right, self.left, n.left = n.right, n.left, n, self.left
             ### END SOLUTION
 
         @staticmethod
@@ -27,21 +30,106 @@ class AVLTree:
     def __init__(self):
         self.size = 0
         self.root = None
+        self.extra = None
 
     @staticmethod
     def rebalance(t):
         ### BEGIN SOLUTION
+        if not t == None:
+            if AVLTree.heightDifference(t) < -1:
+                if AVLTree.heightDifference(t.left) >= 1:
+                    t.left.rotate_left()
+                t.rotate_right()
+            elif AVLTree.heightDifference(t) > 1:
+                if AVLTree.heightDifference(t.right) <= -1:
+                    t.right.rotate_right()
+                t.rotate_left()
         ### END SOLUTION
+    @staticmethod
+    def heightDifference(c):
+        if not c == None:
+            return AVLTree.Node.height(c.right) - AVLTree.Node.height(c.left)
+        return 0
 
     def add(self, val):
         assert(val not in self)
         ### BEGIN SOLUTION
+        c = self.root
+        self.root = self.addFunc(val,c)
         ### END SOLUTION
+
+    def addFunc(self,key,c):
+        if c == None:
+            self.size+=1
+            return self.Node(key,None,None)
+
+        elif key < c.val:
+            left = self.addFunc(key,c.left)
+            c.left = left
+            AVLTree.rebalance(c)
+            return c
+        elif key > c.val:
+            right = self.addFunc(key,c.right)
+            c.right = right
+            AVLTree.rebalance(c)
+            return c
 
     def __delitem__(self, val):
         assert(val in self)
         ### BEGIN SOLUTION
+        c = self.root
+        self.root = self.deleteFunc(val,c)
+        if not self.extra == None:
+            self.forceRebalance(self.extra.val,self.root)
+            self.extra = None
         ### END SOLUTION
+
+    def forceRebalance(self,key,c):
+        if c == None:
+            return None
+        elif c.val == key:
+            AVLTree.rebalance(c)
+        elif key < c.val:
+            self.forceRebalance(key,c.left)
+            AVLTree.rebalance(c)
+        elif key > c.val:
+            self.forceRebalance(key,c.right)
+            AVLTree.rebalance(c)
+
+    def deleteFunc(self,key,c):
+        if c == None:
+            return None
+        elif key == c.val:
+            noded = None
+            self.size-=1
+            if not c.left == None and not c.right == None:
+                n = self.specialDelete(c.left)
+                c.val = n
+                c.left = self.deleteFunc(n,c.left)
+                noded = c
+                self.extra = noded
+            elif c.left == None and not c.right == None:
+                noded = c.right
+            elif c.right == None and not c.left == None:
+                noded = c.left
+            return noded
+        elif key > c.val:
+            right = self.deleteFunc(key,c.right)
+            c.right = right
+            AVLTree.rebalance(c)
+            return c
+        elif key < c.val:
+            left = self.deleteFunc(key,c.left)
+            c.left = left
+            AVLTree.rebalance(c)
+            return c
+
+
+    def specialDelete(self,c):
+        if c.right == None:
+            return c.val
+        else:
+            return self.specialDelete(c.right)
 
     def __contains__(self, val):
         def contains_rec(node):
@@ -107,6 +195,7 @@ def height(t):
     else:
         return max(1+height(t.left), 1+height(t.right))
 
+
 def traverse(t, fn):
     if t:
         fn(t)
@@ -145,7 +234,7 @@ def test_lr_fix_simple():
 
     for x in [3, 1, 2]:
         t.add(x)
-
+    t.pprint()
     tc.assertEqual(height(t.root), 2)
     tc.assertEqual([t.root.left.val, t.root.val, t.root.right.val], [1, 2, 3])
 
