@@ -4,20 +4,47 @@ import random
 def quicksort(lst,pivot_fn):
     qsort(lst,0,len(lst) - 1,pivot_fn)
 
+def scheme(lst, low, high, pivot_fn):
+    ind = lst[pivot_fn(lst, low, high)]
+    pivot = lst[ind]
+    lst[low], lst[ind], pIdx = lst[ind], lst[low], low
+    min = low
+    max = high
+    while min < max:
+        while lst[min] < pivot:
+            min += 1
+        while lst[max] > pivot:
+            max -= 1
+        lst[min], lst[max] = lst[max], lst[min]
+    lst[low], lst[max] = lst[max], lst[low]
+    return max
+
+def quicksort(lst,pivot_fn):
+    qsort(lst,0,len(lst) - 1,pivot_fn)
+
 def qsort(lst,low,high,pivot_fn):
     ### BEGIN SOLUTION
+     if low < high:
+        part = scheme(lst,low,high,pivot_fn)
+        qsort(lst, low, part, pivot_fn)
+        qsort(lst, part + 1, high, pivot_fn)
     ### END SOLUTION
 
 def pivot_first(lst,low,high):
     ### BEGIN SOLUTION
+    return low
     ### END SOLUTION
 
 def pivot_random(lst,low,high):
     ### BEGIN SOLUTION
+    return random.randrange(low, high)
     ### END SOLUTION
 
 def pivot_median_of_three(lst,low,high):
     ### BEGIN SOLUTION
+    list1 = [(low,lst[low]), ((low + high) // 2,lst[(low + high) // 2]), (high,lst[high])]
+    list1.sort(key = lambda x: x[1])
+    return list1[1][0]
     ### END SOLUTION
 
 ################################################################################
